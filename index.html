@@ -75,6 +75,7 @@
         #writer-container {
             width: 320px; height: 320px; background: #fff; 
             border: 5px solid #e74c3c; border-radius: 10px;
+            position: relative;
         }
         .trace-info { color: white; margin-bottom: 15px; font-size: 20px; text-align: center; }
 
@@ -109,6 +110,7 @@
     <button class="btn" style="font-size:14px; background:#eee;" onclick="location.reload()">返回菜单</button>
 </div>
 
+<!-- 描摹层 -->
 <div id="trace-overlay">
     <div class="trace-info">
         请按正确笔顺描摹：<span id="trace-char-name" style="font-size:36px; color:#e74c3c; font-weight:bold;"></span><br>
@@ -162,12 +164,9 @@
         document.body.style.backgroundColor = currentPoetry.color;
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('game-container').classList.remove('hidden');
-        
-        // 显示题目、朝代、作者
         document.getElementById('title-display').innerText = `《${currentPoetry.title}》`;
         document.getElementById('author-info').innerText = `[${currentPoetry.dynasty}] ${currentPoetry.author}`;
         document.getElementById('student-tag').innerText = `挑战者：${userName}`;
-        
         initPoetryDisplay(); startTimer(); loadPhase();
     }
 
@@ -239,15 +238,37 @@
     }
 
     function startTracing() {
-        if(hardCharsToTrace.length === 0) { document.getElementById('trace-overlay').style.display = 'none'; nextStep(); return; }
+        if (hardCharsToTrace.length === 0) {
+            document.getElementById('trace-overlay').style.display = 'none';
+            nextStep();
+            return;
+        }
+        
         const char = hardCharsToTrace.shift();
+        const container = document.getElementById('writer-container');
         document.getElementById('trace-overlay').style.display = 'flex';
         document.getElementById('trace-char-name').innerText = char;
         document.getElementById('next-trace-btn').classList.add('hidden');
-        document.getElementById('writer-container').innerHTML = '';
+        container.innerHTML = '<div id="loading-hint" style="text-align:center; padding-top:140px; color:#999;">正在加载笔顺数据...</div>';
+
+        // 初始化 Writer，增加备用数据源以防“浥”等字加载失败
         writer = HanziWriter.create('writer-container', char, {
             width: 320, height: 320, padding: 20, showOutline: true,
             strokeAnimationSpeed: 1, delayBetweenStrokes: 200,
+            charDataLoader: function(char, onComplete) {
+                // 尝试从 jsdelivr 加载数据
+                fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const hint = document.getElementById('loading-hint');
+                        if(hint) hint.remove();
+                        onComplete(data);
+                    })
+                    .catch(err => {
+                        alert(`由于网络原因，字件【${char}】加载失败，将跳过描摹。`);
+                        finishTrace();
+                    });
+            },
             onComplete: () => { document.getElementById('next-trace-btn').classList.remove('hidden'); }
         });
         writer.quiz();
