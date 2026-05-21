@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>古诗复习 - 笔顺数据增强版</title>
+    <title>古诗复习 - 智能笔顺挑战版</title>
+    <!-- 引入汉字笔顺核心库 -->
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <style>
         :root { --bg-color: #fdf6e3; --theme-color: #859900; }
@@ -13,11 +14,14 @@
             display: flex; flex-direction: column; align-items: center;
             touch-action: none; overflow: hidden;
         }
+
+        /* 界面层级 */
         #login-screen, #menu-screen, #result-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
+
         .btn {
             padding: 12px 25px; margin: 8px; font-size: 20px;
             background: white; border: 2px solid var(--theme-color);
@@ -25,23 +29,63 @@
             box-shadow: 0 4px 0 var(--theme-color);
         }
         .btn:active { transform: translateY(2px); box-shadow: none; }
-        #game-container { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; padding-top: 10px; overflow-y: auto; touch-action: pan-y; }
+
+        /* 游戏主区域 */
+        #game-container { 
+            width: 100%; height: 100vh; display: flex; flex-direction: column; 
+            align-items: center; padding-top: 10px; overflow-y: auto; touch-action: pan-y; 
+        }
         #timer-box { font-size: 22px; color: #cb4b16; font-weight: bold; margin-bottom: 5px; }
+        
         #game-header { text-align: center; margin-bottom: 10px; }
         #title-display { font-size: 28px; color: #2c3e50; margin: 5px 0; font-weight: bold; }
         #author-info { font-size: 18px; color: #586e75; margin-bottom: 5px; }
-        #poetry-display { width: 90%; max-width: 700px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        #poetry-display {
+            width: 90%; max-width: 700px; background: rgba(255,255,255,0.9);
+            padding: 15px; border-radius: 15px; margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
         .sentence-row { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 8px; font-size: 28px; }
         .char-placeholder { width: 34px; border-bottom: 2px solid #bdc3c7; margin: 0 3px; text-align: center; color: transparent; }
         .char-revealed { color: #2c3e50; border-bottom: none; animation: pop 0.3s; }
         .hard-char { color: #e74c3c !important; font-weight: bold; }
-        #slot-area { width: 90%; max-width: 600px; min-height: 60px; background: #2c3e50; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; margin-bottom: 15px; }
+
+        /* 交互区 */
+        #slot-area { 
+            width: 90%; max-width: 600px; min-height: 60px; background: #2c3e50; 
+            border-radius: 12px; display: flex; flex-wrap: wrap; 
+            align-items: center; justify-content: center; gap: 8px; padding: 10px; margin-bottom: 15px;
+        }
         .slot { width: 48px; height: 48px; background: #ecf0f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-        #pool { display: grid; grid-template-columns: repeat(auto-fit, minmax(55px, 1fr)); gap: 12px; width: 90%; max-width: 600px; padding: 15px; background: rgba(255,255,255,0.5); border: 2px dashed #93a1a1; border-radius: 15px; }
+
+        #pool { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(55px, 1fr)); 
+            gap: 12px; width: 90%; max-width: 600px; padding: 15px; 
+            background: rgba(255,255,255,0.5); border: 2px dashed #93a1a1; border-radius: 15px;
+        }
         .char-card { width: 55px; height: 55px; background: white; border: 2px solid #34495e; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 0 #34495e; }
-        #trace-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        #writer-container { width: 320px; height: 320px; background: #fff; border: 5px solid #e74c3c; border-radius: 10px; }
+
+        /* --- 描摹层 --- */
+        #trace-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 200;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
         .trace-info { color: white; margin-bottom: 15px; font-size: 20px; text-align: center; }
+        
+        /* 书写容器 */
+        #writer-wrapper {
+            background: white; padding: 10px; border-radius: 10px; display: flex; gap: 10px;
+        }
+        #writer-container { width: 320px; height: 320px; position: relative; }
+        
+        /* 自检模式下的双格布局 */
+        .self-check-layout { display: flex; gap: 10px; }
+        .char-box { width: 300px; height: 300px; border: 2px solid #e74c3c; position: relative; background-color: #fff; }
+        #standard-display { font-size: 240px; display: flex; align-items: center; justify-content: center; color: #333; }
+        #free-canvas { background: transparent; touch-action: none; cursor: crosshair; }
+
         .hidden { display: none !important; }
         @keyframes pop { from { transform: scale(1.3); } to { transform: scale(1); } }
     </style>
@@ -73,14 +117,19 @@
     <button class="btn" style="font-size:14px; background:#eee;" onclick="location.reload()">返回菜单</button>
 </div>
 
+<!-- 描摹层 -->
 <div id="trace-overlay">
     <div class="trace-info" id="trace-text-hint">
         请按正确笔顺描摹：<span id="trace-char-name" style="font-size:36px; color:#e74c3c; font-weight:bold;"></span><br>
-        <span id="trace-sub-hint" style="font-size:14px; color:#aaa;">(必须按正确笔顺书写)</span>
+        <span id="trace-sub-hint" style="font-size:14px; color:#aaa;">(写错笔画将无法通过)</span>
     </div>
-    <div id="writer-container"></div>
+    
+    <div id="writer-wrapper">
+        <div id="writer-container"></div>
+    </div>
+
     <div style="margin-top:20px;">
-        <button id="demo-btn" class="btn" onclick="demoStroke()" style="background:#3498db; color:white; border-color:#2980b9;">笔顺演示</button>
+        <button id="demo-btn" class="btn" onclick="demoStroke()" style="background:#3498db; color:white;">笔顺演示</button>
         <button id="reset-btn" class="btn" onclick="resetTrace()">重写</button>
         <button id="next-trace-btn" class="btn hidden" style="background:#e74c3c; color:white;" onclick="finishTrace()">写好了，继续</button>
     </div>
@@ -93,11 +142,6 @@
 </div>
 
 <script>
-    // 【关键改进】本地化“浥”字数据，解决加载失败问题
-    const LOCAL_CHAR_DATA = {
-        "浥": {"strokes":["M 20 18 C 18 20 16 22 14 24","M 12 42 C 15 42 20 42 25 42","M 10 70 C 12 75 15 80 18 85","M 45 15 C 50 15 55 15 60 15","M 40 35 C 40 35 75 35 75 35","M 40 55 C 40 55 75 55 75 55","M 35 15 C 35 15 35 90 35 90","M 80 15 C 80 15 80 90 80 90","M 45 35 C 45 35 45 55 45 55","M 70 35 C 70 35 70 55 70 55","M 40 90 C 45 90 70 90 75 90"],"medians":[[[20,18],[14,24]],[[12,42],[25,42]],[[10,70],[18,85]],[[45,15],[60,15]],[[40,35],[75,35]],[[40,55],[75,55]],[[35,15],[35,90]],[[80,15],[80,90]],[[45,35],[45,55]],[[70,35],[70,55]],[[40,90],[75,90]]]}
-    };
-
     const poetryData = [
         { title: "赠汪伦", dynasty: "唐", author: "李白", sentences: ["李白乘舟将欲行", "忽闻岸上踏歌声", "桃花潭水深千尺", "不及汪伦送我情"], hard: ["乘", "欲", "潭"], traps: ["乖", "预", "滩"], color: "#fdf6e3", type: "jueju" },
         { title: "凉州词", dynasty: "唐", author: "王翰", sentences: ["葡萄美酒夜光杯", "欲饮琵琶马上催", "醉卧沙场君莫笑", "古来征战几人回"], hard: ["琵", "琶", "催", "汉"], traps: ["琴", "崔", "汗"], color: "#eee8d5", type: "jueju" },
@@ -109,7 +153,9 @@
 
     let userName = "", currentPoetry = null, timer = null, seconds = 0;
     let currentPhase = 0, currentSentenceInPhase = 0, selectedChars = [], hardCharsToTrace = [], writer = null;
+    let isSelfCheckMode = false;
 
+    // --- 启动逻辑 ---
     function showMenu() {
         userName = document.getElementById('user-name').value.trim();
         if(!userName) return alert("请输入姓名");
@@ -144,8 +190,8 @@
         container.innerHTML = '';
         currentPoetry.sentences.forEach((s, sIdx) => {
             const row = document.createElement('div'); row.className = 'sentence-row';
-            s.split('').forEach((char, cIdx) => {
-                const span = document.createElement('span'); span.className = 'char-placeholder'; span.id = `target-${sIdx}-${cIdx}`; span.innerText = char; row.appendChild(span);
+            s.split('').forEach((char, i) => {
+                const span = document.createElement('span'); span.className = 'char-placeholder'; span.id = `target-${sIdx}-${i}`; span.innerText = char; row.appendChild(span);
             });
             const punc = document.createElement('span'); punc.innerText = (sIdx % 2 === 0) ? "，" : "。"; row.appendChild(punc); container.appendChild(row);
         });
@@ -156,8 +202,8 @@
         let start = currentPhase * 4;
         let end = currentPoetry.type === "jueju" ? 4 : (currentPhase + 1) * 4;
         let phaseSentences = currentPoetry.sentences.slice(start, end);
-        let allChars = phaseSentences.join('').split('').map(c => ({c, isTrap: false}));
-        currentPoetry.traps.forEach(t => allChars.push({c: t, isTrap: true}));
+        let allChars = phaseSentences.join('').split('').map(c => ({c}));
+        currentPoetry.traps.forEach(t => allChars.push({c: t}));
         allChars.sort(() => Math.random() - 0.5);
 
         allChars.forEach(item => {
@@ -196,14 +242,15 @@
                 el.classList.add('char-revealed');
                 if(currentPoetry.hard.includes(char)) el.classList.add('hard-char');
             });
-            if(currentHard.length > 0) { hardCharsToTrace = currentHard; setTimeout(() => startTracing(), 600); } 
+            if(currentHard.length > 0) { hardCharsToTrace = currentHard; setTimeout(startTracing, 600); } 
             else { nextStep(); }
         } else {
-            document.getElementById('msg').innerText = "❌ 顺序不对或选错字了";
-            setTimeout(() => document.getElementById('msg').innerText = "", 2500);
+            document.getElementById('msg').innerText = "❌ 拼写顺序有误";
+            setTimeout(() => document.getElementById('msg').innerText = "", 2000);
         }
     }
 
+    // --- 核心：智能切换描摹逻辑 ---
     function startTracing() {
         if (hardCharsToTrace.length === 0) {
             document.getElementById('trace-overlay').style.display = 'none';
@@ -212,53 +259,100 @@
         }
         
         const char = hardCharsToTrace.shift();
-        const container = document.getElementById('writer-container');
+        isSelfCheckMode = false;
         document.getElementById('trace-overlay').style.display = 'flex';
         document.getElementById('trace-char-name').innerText = char;
         document.getElementById('next-trace-btn').classList.add('hidden');
-        container.innerHTML = '';
+        document.getElementById('trace-sub-hint').innerText = "(写错笔画将无法通过)";
+        document.getElementById('demo-btn').classList.remove('hidden');
+        document.getElementById('reset-btn').classList.remove('hidden');
 
-        // 优先检查本地数据，如果没有则去 CDN 加载
+        const container = document.getElementById('writer-container');
+        container.innerHTML = '<div id="loading-hint" style="text-align:center; padding-top:140px; color:#999;">正在加载笔顺数据...</div>';
+
+        // 尝试加载笔顺库
         writer = HanziWriter.create('writer-container', char, {
             width: 320, height: 320, padding: 20, showOutline: true,
             strokeAnimationSpeed: 1, delayBetweenStrokes: 200,
-            charDataLoader: function(char, onComplete) {
-                if (LOCAL_CHAR_DATA[char]) {
-                    onComplete(LOCAL_CHAR_DATA[char]);
-                } else {
-                    fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
-                        .then(res => res.json())
-                        .then(data => onComplete(data))
-                        .catch(() => {
-                            // 兜底：如果 CDN 也挂了，启动自动演示
-                            triggerAutoDemo(char);
-                        });
-                }
+            charDataLoader: function(c, onComplete) {
+                fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${c}.json`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if(document.getElementById('loading-hint')) document.getElementById('loading-hint').remove();
+                        onComplete(data);
+                    })
+                    .catch(() => switchToSelfCheck(char)); // 失败则切换
             },
             onComplete: () => { document.getElementById('next-trace-btn').classList.remove('hidden'); }
         });
         writer.quiz();
     }
 
-    function triggerAutoDemo(char) {
-        document.getElementById('trace-sub-hint').innerText = "(数据加载中，请先观察演示)";
-        document.getElementById('writer-container').innerHTML = '';
-        let demoWriter = HanziWriter.create('writer-container', char, {
-            width: 320, height: 320, padding: 20, showOutline: true
-        });
-        demoWriter.animateCharacter({ onComplete: () => { document.getElementById('next-trace-btn').classList.remove('hidden'); } });
+    // 切换到自检模式（自由书写）
+    function switchToSelfCheck(char) {
+        isSelfCheckMode = true;
+        document.getElementById('trace-sub-hint').innerText = "(数据加载失败，请对比左侧端正书写)";
+        document.getElementById('demo-btn').classList.add('hidden');
+        document.getElementById('next-trace-btn').classList.remove('hidden');
+        
+        const container = document.getElementById('writer-container');
+        container.style.width = "620px"; // 扩宽容器
+        container.innerHTML = `
+            <div class="self-check-layout">
+                <div class="char-box" id="standard-display">${char}</div>
+                <div class="char-box"><canvas id="free-canvas" width="300" height="300"></canvas></div>
+            </div>
+        `;
+        initFreeCanvas();
+    }
+
+    // 自由画板逻辑
+    let fCanvas, fCtx, fDrawing = false;
+    function initFreeCanvas() {
+        fCanvas = document.getElementById('free-canvas');
+        fCtx = fCanvas.getContext('2d');
+        fCtx.lineWidth = 8; fCtx.lineCap = 'round'; fCtx.strokeStyle = '#333';
+        
+        const getPos = (e) => {
+            const rect = fCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        };
+        const start = (e) => { fDrawing = true; fCtx.beginPath(); const p = getPos(e); fCtx.moveTo(p.x, p.y); };
+        const move = (e) => { if(!fDrawing) return; e.preventDefault(); const p = getPos(e); fCtx.lineTo(p.x, p.y); fCtx.stroke(); };
+        const stop = () => { fDrawing = false; };
+
+        fCanvas.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', stop);
+        fCanvas.addEventListener('touchstart', start);
+        fCanvas.addEventListener('touchmove', move);
+        fCanvas.addEventListener('touchend', stop);
+    }
+
+    function resetTrace() {
+        if(isSelfCheckMode) {
+            fCtx.clearRect(0, 0, fCanvas.width, fCanvas.height);
+        } else if(writer) {
+            writer.quiz();
+            document.getElementById('next-trace-btn').classList.add('hidden');
+        }
     }
 
     function demoStroke() { if(writer) { writer.animateCharacter(); setTimeout(() => writer.quiz(), 2500); } }
-    function resetTrace() { if(writer) writer.quiz(); document.getElementById('next-trace-btn').classList.add('hidden'); }
-    function finishTrace() { startTracing(); }
+    function finishTrace() { 
+        const container = document.getElementById('writer-container');
+        container.style.width = "320px"; // 还原容器宽度
+        startTracing(); 
+    }
 
     function nextStep() {
         selectedChars = []; currentSentenceInPhase++;
-        let totalSentences = currentPoetry.sentences.length;
-        if(currentSentenceInPhase + (currentPhase * 4) < totalSentences) {
+        let total = currentPoetry.sentences.length;
+        if(currentSentenceInPhase + (currentPhase * 4) < total) {
             if(currentPoetry.type === "lvshi" && currentSentenceInPhase === 4) {
-                currentPhase = 1; currentSentenceInPhase = 0; alert("前半部分完成！准备挑战后半部分。"); loadPhase();
+                currentPhase = 1; currentSentenceInPhase = 0; alert("前半部分完成！"); loadPhase();
             } else {
                 renderSlots(currentPoetry.sentences[currentPhase*4 + currentSentenceInPhase].length);
             }
@@ -271,9 +365,8 @@
         document.getElementById('result-content').innerHTML = `
             <center><strong>《${currentPoetry.title}》复习报告</strong></center><hr>
             <strong>姓名：</strong> ${userName}<br>
-            <strong>作者：</strong> [${currentPoetry.dynasty}] ${currentPoetry.author}<br>
             <strong>用时：</strong> <span style="color:#e74c3c; font-size:24px;">${seconds}</span> 秒<br><br>
-            恭喜你！笔顺和背诵都过关了！
+            恭喜！笔顺和背诵都过关了！
         `;
     }
 </script>
